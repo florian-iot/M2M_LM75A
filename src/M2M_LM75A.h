@@ -16,6 +16,7 @@
 #else
 #include "WProgram.h"
 #endif
+#include <Wire.h>
 
 #define LM75A_DEFAULT_ADDRESS		0x48		// Address is configured with pins A0-A2
 #define LM75A_REGISTER_TEMP			0			// Temperature register (read-only)
@@ -54,6 +55,8 @@ class M2M_LM75A
 {
 	// Private variables
 	uint8_t _i2cAddress;
+	TwoWire *_wire;
+	bool _isExternalWire;
 
 	// Private functions
 	uint8_t read8bitRegister(const uint8_t reg);
@@ -65,9 +68,11 @@ public:
 	// Constructors
     M2M_LM75A();
     M2M_LM75A(uint8_t address);
+    M2M_LM75A(uint8_t address, TwoWire *wire);
 
 	// Startup/Teardown
 	void begin();
+	void begin(uint8_t i2cAddress);
 	void end();
 	
 	// Power management

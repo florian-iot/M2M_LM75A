@@ -18,11 +18,22 @@
 M2M_LM75A::M2M_LM75A()
 {
 	_i2cAddress = LM75A_DEFAULT_ADDRESS;
+	_wire = &Wire;
+	_isExternalWire = false;
 }
 
 M2M_LM75A::M2M_LM75A(uint8_t i2cAddress)
 {
 	_i2cAddress = i2cAddress;
+	_wire = &Wire;
+	_isExternalWire = false;
+}
+
+M2M_LM75A::M2M_LM75A(uint8_t i2cAddress, TwoWire *wire)
+{
+	_i2cAddress = i2cAddress;
+	_wire = wire;
+	_isExternalWire = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,11 +42,29 @@ M2M_LM75A::M2M_LM75A(uint8_t i2cAddress)
 //
 void M2M_LM75A::begin()
 {
-	Wire.begin();
+	if (!_isExternalWire)
+	{
+		_wire->begin();
+	}
 }
+
+void M2M_LM75A::begin(uint8_t i2cAddress)
+{
+	_i2cAddress = i2cAddress;
+	if (!_isExternalWire)
+	{
+		_wire->begin();
+	}
+}
+
 void M2M_LM75A::end()
 {
-	Wire.end();
+	if (!_isExternalWire)
+	{
+#ifndef ESP32
+		_wire->end();
+#endif
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +104,12 @@ float M2M_LM75A::getTemperature()
 
 float M2M_LM75A::getTemperatureInFarenheit()
 {
-	return getTemperature() * 1.8f + 32.0f;
+	float t = getTemperature();
+	if (t == LM75A_INVALID_TEMPERATURE)
+	{
+		return LM75A_INVALID_TEMPERATURE;
+	}
+	return t * 1.8f + 32.0f;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -179,11 +213,11 @@ uint8_t M2M_LM75A::read8bitRegister(const uint8_t reg)
 {
 	uint8_t result;
 
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(reg);
-	Wire.endTransmission();
-	Wire.requestFrom(_i2cAddress, (uint8_t)1);
-	result = Wire.read();
+	_wire->beginTransmission(_i2cAddress);
+	_wire->write(reg);
+	_wire->endTransmission();
+	_wire->requestFrom(_i2cAddress, (uint8_t)1);
+	result = _wire->read();
 	return result;
 }
 
@@ -191,43 +225,43 @@ bool M2M_LM75A::read16bitRegister(const uint8_t reg, uint16_t& response)
 {
 	uint8_t result;
 
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(reg);
-	result = Wire.endTransmission();
+	_wire->beginTransmission(_i2cAddress);
+	_wire->write(reg);
+	result = _wire->endTransmission();
 	// result is 0-4 
 	if (result != 0)
 	{
 		return false;
 	}
 
-	result = Wire.requestFrom(_i2cAddress, (uint8_t)2);
+	result = _wire->requestFrom(_i2cAddress, (uint8_t)2);
 	if (result != 2)
 	{
 		return false;
 	}
-	uint8_t part1 = Wire.read();
-	uint8_t part2 = Wire.read();
+	uint8_t part1 = _wire->read();
+	uint8_t part2 = _wire->read();
 	
-	//response = (Wire.read() << 8) | Wire.read();
-	uint16_t temp = part1 << 8 | part2;
+	//response = (_wire->read() << 8) | _wire->read();
+	// uint16_t temp = part1 << 8 | part2;
 	response = part1 << 8 | part2;
 	return true;
 }
 
 bool M2M_LM75A::write16bitRegister(const uint8_t reg, const uint16_t value)
 {
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(reg);
-	Wire.write((byte)(value >> 8));
-	Wire.write((byte)value);
-	return Wire.endTransmission() == 0;
+	_wire->beginTransmission(_i2cAddress);
+	_wire->write(reg);
+	_wire->write((byte)(value >> 8));
+	_wire->write((byte)value);
+	return _wire->endTransmission() == 0;
 }
 
 bool M2M_LM75A::write8bitRegister(const uint8_t reg, const uint8_t value)
 {
-	Wire.beginTransmission(_i2cAddress);
-	Wire.write(reg);
-	Wire.write(value);
-	return Wire.endTransmission() == 0;
+	_wire->beginTransmission(_i2cAddress);
+	_wire->write(reg);
+	_wire->write(value);
+	return _wire->endTransmission() == 0;
 }
 
